@@ -29,7 +29,7 @@
    用文本编辑器打开 `main.py`，找到 `WHITELIST` 列表，加入允许使用该指令的 QQ 号：
    ```python
    # main.py
-   WHITELIST = ["1914828598"] # 替换或添加你自己的 QQ 号
+   WHITELIST = ["XXXXXXXXX"] # 替换或添加你自己的 QQ 号
    ```
    *注：如果不配置白名单，连部署者本人也无法触发指令。*
 
