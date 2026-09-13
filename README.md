@@ -1,67 +1,73 @@
-# 🚀 AstrBot JMComic PDF 下传插件
+# astrbot_plugin_jmcomic
 
-本插件为 [AstrBot](https://github.com/Soulter/AstrBot) V4 框架设计，旨在实现 JMComic 漫画的自动化爬取、PDF 无缝缝合及云端直发。
+一个给 AstrBot 使用的 JMComic PDF 下载插件。
 
-针对 Linux 环境（尤其是 Docker/Snap 沙盒）中 QQ/微信 客户端无法读取非标准路径文件、权限受限等痛点，本插件采用“本地合成 + 云端中转”的降维打击方案，通过返回临时直链，彻底规避 OneBot 平台常见的 `retcode=1200`（路径不存在/无法访问）报错，确保 100% 的发送成功率。
+插件注册了 `/jm` 命令。输入漫画 ID 后，它会下载对应画册的图片，使用 Pillow 合成为 PDF，上传到 `tmpfiles.org`，最后返回一个下载地址。生成过程中使用的临时目录会在发送完成后删除。
 
-## ✨ 核心特性
+## 安装
 
-* **☁️ 云端数据流传输**：通过 `tmpfiles.org` 接口将生成的 PDF 转化为完全匿名的临时直链。直接发送 URL 给客户端，无视一切本地阻挡。
-* **🧹 磁盘零占用**：采用“战前清场”与“阅后即焚”逻辑。任务开始前自动清理旧数据，任务结束后彻底销毁本地存根，绝不占用宝贵的 VPS/本地 硬盘空间。
-* **🛡️ 严格访问控制**：内置 `WHITELIST` 机制，支持针对特定 QQ UID 开启权限。非白名单用户触发指令时机器人直接“装死”无视，从源头降低风控和被举报风险。
+在 AstrBot 的插件目录执行：
 
-## 📦 安装指南
+```bash
+cd data/plugins/
+git clone https://github.com/air041001/astrbot_plugin_jmcomic.git
+```
 
-1. **安装环境依赖**
-   确保你的运行环境已安装以下 Python 库：
-   ```bash
-   pip install jmcomic Pillow requests
-   ```
+安装依赖：
 
-2. **部署插件**
-   进入 AstrBot 插件目录（通常为 `data/plugins/`），克隆本仓库：
-   ```bash
-   cd data/plugins/
-   git clone [https://github.com/air041001/astrbot_plugin_jmcomic.git](https://github.com/air041001/astrbot_plugin_jmcomic.git)
-   ```
+```bash
+pip install -r astrbot_plugin_jmcomic/requirements.txt
+```
 
-3. **配置权限（⚠️必看）**
-   用文本编辑器打开 `main.py`，找到 `WHITELIST` 列表，加入允许使用该指令的 QQ 号：
-   ```python
-   # main.py
-   WHITELIST = ["XXXXXXXXX"] # 替换或添加你自己的 QQ 号
-   ```
-   *注：如果不配置白名单，连部署者本人也无法触发指令。*
+然后在 AstrBot 中重载插件，或重启 AstrBot。
 
-4. **重启生效**
-   进入 AstrBot 的 WebUI 仪表盘，点击 **【重载】** 插件，或直接重启机器人进程。
+依赖包括：
 
-## 🎮 使用方法
+- `jmcomic`
+- `Pillow`
+- `requests`
 
-在私聊或允许的群聊中发送：
+## 配置白名单
+
+白名单写在 `main.py` 的 `WHITELIST` 变量中。把示例值替换成允许使用命令的 QQ 号，例如：
+
+```python
+WHITELIST = ["123456789", "987654321"]
+```
+
+不在白名单中的消息不会得到回复。当前代码使用字符串包含匹配来判断发送者 ID，因此填写时应确认它与 AstrBot 实际提供的 `sender_id` 格式相符。
+
+## 使用
+
+在 AstrBot 能接收命令的会话中发送：
 
 ```text
-/jm [车牌号]
+/jm 1127428
 ```
-*示例：`/jm 1127428`*
 
-机器人将依次反馈进度，并在处理完成后下发专属的高速下载直链。
+ID 必须是纯数字。插件会依次完成下载、图片转换和 PDF 生成；处理成功后会返回下载地址。
 
-## 🤝 致谢
+由于代码会把返回地址中的英文句号替换成中文句号，复制地址后需要把 `。` 改回 `.` 才能打开。
 
-* 本插件核心下载逻辑基于强大的 [JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python) 驱动。向原作者在爬虫领域的硬核贡献表示敬意。
+## 文件和临时目录
 
-## ⚠️ 免责声明
+默认临时目录是：
 
-* 本项目仅供 Python 编程学习及网络协议研究使用，请勿用于任何商业用途或大范围公开传播。
-* 请勿利用本插件爬取或传播任何非法内容。
-* 使用本插件产生的任何版权纠纷、网络风控或账号安全风险，均由使用者自行承担。
+```text
+/AstrBot/data/jm_tmp/<漫画ID>/
 ```
-作者的话：
-	一次尝试
 
+插件会在启动时创建这个目录。正常完成上传后，对应的漫画目录会被删除；如果中途异常退出，临时目录可能需要手动清理。PDF 的文件名为 `<漫画ID>.pdf`。如果部署环境没有这个路径，需要在 `main.py` 中调整 `base_mount_dir`。
 
+## 常见情况
 
+- 没有任何回复：先检查发送者是否在 `WHITELIST` 中。
+- 提示 ID 必须是纯数字：命令参数中不要带前缀、空格或其他字符。
+- 云端中转失败：检查 AstrBot 运行环境能否访问 `tmpfiles.org`。
+- 下载后没有 PDF：查看 AstrBot 日志，确认图片下载和 Pillow 转换过程是否报错。
 
+## 说明
 
+这个插件依赖 [JMComic-Crawler-Python](https://github.com/hect0x7/JMComic-Crawler-Python) 完成画册下载。插件本身只负责命令处理、图片转 PDF 和临时文件上传，不提供漫画内容。
 
+请遵守所在地区的法律法规、网站条款和版权要求，只处理你有权访问或保存的内容。
